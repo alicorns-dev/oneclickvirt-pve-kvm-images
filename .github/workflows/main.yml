@@ -1,4 +1,4 @@
-name: Build PVE KVM images
+name: Build PVE KVM images from official sources
 on:
   schedule:
     - cron: '34 4 * * *'
@@ -8,7 +8,7 @@ jobs:
   build_pve_kvm_images:
     runs-on: pve-1
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: check path
       run: |
@@ -27,61 +27,126 @@ jobs:
         sudo apt-get install -y curl wget unzip zip jq
         sudo apt-get install -y libguestfs-tools rng-tools curl
         sudo apt-get install -y libguestfs-tools rng-tools curl --fix-missing
-        curl -o rebuild_qcow2.sh https://raw.githubusercontent.com/oneclickvirt/pve_kvm_images/main/rebuild_qcow2.sh
+        curl -o rebuild_qcow2.sh https://raw.githubusercontent.com/alicorns-dev/oneclickvirt-pve-kvm-images/main/rebuild_qcow2.sh
         chmod 777 rebuild_qcow2.sh
 
-    - name: Download qcow2
-      run: | 
-        images=($(curl -s -m 6 https://down.idc.wiki/Image/realServer-Template/current/qcow2/ | grep -o '<a href="[^"]*">' | awk -F'"' '{print $2}' | sed -n '/qcow2$/s#/Image/realServer-Template/current/qcow2/##p'))
-        if [ ${#images[@]} -gt 0 ]; then
-            for image in "${images[@]}"; do
-                echo "$image"
-                curl -m 60 -o $image "https://down.idc.wiki/Image/realServer-Template/current/qcow2/$image"
-                if [ $? -ne 0 ]; then
-                    sleep 6
-                    curl -m 60 -o $image "https://down.idc.wiki/Image/realServer-Template/current/qcow2/$image"
-                fi
-                chmod 777 $image
-                sleep 1
-            done
-        fi
+    - name: Download official qcow2 images
+      run: |
+        mkdir -p images
+        cd images
+        
+        # Ubuntu 24.04 LTS (Noble)
+        echo "Downloading Ubuntu 24.04 LTS..."
+        curl -L -o noble-server-cloudimg-amd64.img "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+        
+        # Ubuntu 22.04 LTS (Jammy) 
+        echo "Downloading Ubuntu 22.04 LTS..."
+        curl -L -o jammy-server-cloudimg-amd64.img "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+        
+        # Debian 12 (Bookworm)
+        echo "Downloading Debian 12..."
+        curl -L -o debian-12-nocloud-amd64.qcow2 "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2"
+        
+        # Debian 11 (Bullseye) 
+        echo "Downloading Debian 11..."
+        curl -L -o debian-11-nocloud-amd64.qcow2 "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-nocloud-amd64.qcow2"
+        
+        # AlmaLinux 9
+        echo "Downloading AlmaLinux 9..."
+        curl -L -o AlmaLinux-9-GenericCloud-latest.x86_64.qcow2 "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2"
+        
+        # AlmaLinux 8
+        echo "Downloading AlmaLinux 8..."
+        curl -L -o AlmaLinux-8-GenericCloud-latest.x86_64.qcow2 "https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2"
+        
+        # Rocky Linux 9
+        echo "Downloading Rocky Linux 9..."
+        curl -L -o Rocky-9-GenericCloud-Base.latest.x86_64.qcow2 "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2"
+        
+        # Rocky Linux 8
+        echo "Downloading Rocky Linux 8..."
+        curl -L -o Rocky-8-GenericCloud-Base.latest.x86_64.qcow2 "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2"
+        
+        # CentOS Stream 9
+        echo "Downloading CentOS Stream 9..."
+        curl -L -o CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2 "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+        
+        # Fedora 42 (latest)
+        echo "Downloading Fedora 42..."
+        FEDORA_LATEST=$(curl -s https://dl.fedoraproject.org/pub/fedora/linux/releases/ | grep -o 'href="[0-9]*/"' | sed 's/href="//;s/\/"//g' | sort -n | tail -1)
+        curl -L -o Fedora-Cloud-Base-$FEDORA_LATEST.x86_64.qcow2 "https://dl.fedoraproject.org/pub/fedora/linux/releases/$FEDORA_LATEST/Cloud/x86_64/images/Fedora-Cloud-Base-$FEDORA_LATEST.x86_64.qcow2"
+        
+        # Alpine Linux (获取最新版本)
+        echo "Downloading Alpine Linux..."
+        ALPINE_VERSION=$(curl -s https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/ | grep -o 'alpine-virt-[0-9.]*-x86_64.iso' | head -1 | sed 's/alpine-virt-//;s/-x86_64.iso//')
+        # Alpine没有官方qcow2格式，我们需要使用社区提供的云镜像
+        curl -L -o alpine-$ALPINE_VERSION-x86_64-bios-cloudinit-r0.qcow2 "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VERSION%.*}/cloud/alpine-$ALPINE_VERSION-x86_64-bios-cloudinit-r0.qcow2" || echo "Alpine cloud image not available for this version"
+        
+        # Arch Linux
+        echo "Downloading Arch Linux..."
+        curl -L -o Arch-Linux-x86_64-cloudimg.qcow2 "https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-cloudimg.qcow2"
+        
+        # 重命名文件以符合原有命名规范
+        for file in *.img *.qcow2; do
+          if [ -f "$file" ]; then
+            chmod 644 "$file"
+            echo "Downloaded: $file ($(du -h "$file" | cut -f1))"
+          fi
+        done
+        
+        cd ..
       
     - name: Build and Upload Images
       run: |
-        images=($(curl -s -m 6 https://down.idc.wiki/Image/realServer-Template/current/qcow2/ | grep -o '<a href="[^"]*">' | awk -F'"' '{print $2}' | sed -n '/qcow2$/s#/Image/realServer-Template/current/qcow2/##p'))
-        if [ ${#images[@]} -gt 0 ]; then
-            release_id=$(curl -s -m 6 -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/oneclickvirt/pve_kvm_images/releases/tags/images" | jq -r '.id')
-            for file in "${images[@]}"; do
-                echo "Building and uploading images"
-                ./rebuild_qcow2.sh $file
-                if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ] && [ $(stat -c %s "$file") -le 2147483648 ]; then
-                    echo "\nChecking if $file already exists in release..."
-                    existing_asset_id=$(curl -s -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/oneclickvirt/pve_kvm_images/releases/$release_id/assets" | jq -r --arg name "$(basename "$file")" '.[] | select(.name == $name) | .id')
-                    if [ -n "$existing_asset_id" ]; then
-                        echo "\nAsset $file already exists in release, deleting existing asset..."
-                        delete_response=$(curl -s -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/oneclickvirt/pve_kvm_images/releases/assets/$existing_asset_id")
-                        echo "\n$delete_response"
-                        if [ $? -eq 0 ] && ! echo "$delete_response" | grep -q "error"; then
-                            echo "\nExisting asset deleted successfully."
-                        else
-                            echo "\nFailed to delete existing asset. Skipping file upload..."
-                            rm -rf $file
-                            continue
-                        fi
-                    else
-                        echo "No $file file."
-                    fi
-                    echo "\nUploading $file to release..."
-                    curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                      -H "Content-Type: application/zip" \
-                      -T "$file" \
-                      "https://uploads.github.com/repos/oneclickvirt/pve_kvm_images/releases/$release_id/assets?name=$(basename "$file")"
-                    rm -rf $file
-                else
-                    echo "\nNo $file or less than 10 MB"
-                fi
-            done
-        else
-            echo "NO KVM IMAGES"
-        fi
+        cd images
         
+        # 获取release ID
+        release_id=$(curl -s -m 6 -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/alicorns-dev/oneclickvirt-pve-kvm-images/releases/tags/images" | jq -r '.id')
+        
+        for file in *.img *.qcow2; do
+          if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ]; then
+            echo "Building and uploading $file"
+            
+            # 复制到上级目录进行处理
+            cp "$file" "../$file"
+            cd ..
+            
+            # 运行重建脚本
+            ./rebuild_qcow2.sh "$file"
+            
+            if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ] && [ $(stat -c %s "$file") -le 2147483648 ]; then
+              echo "Checking if $file already exists in release..."
+              existing_asset_id=$(curl -s -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/alicorns-dev/oneclickvirt-pve-kvm-images/releases/$release_id/assets" | jq -r --arg name "$(basename "$file")" '.[] | select(.name == $name) | .id')
+              
+              if [ -n "$existing_asset_id" ]; then
+                echo "Asset $file already exists in release, deleting existing asset..."
+                delete_response=$(curl -s -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/alicorns-dev/oneclickvirt-pve-kvm-images/releases/assets/$existing_asset_id")
+                echo "$delete_response"
+                if [ $? -eq 0 ] && ! echo "$delete_response" | grep -q "error"; then
+                  echo "Existing asset deleted successfully."
+                else
+                  echo "Failed to delete existing asset. Skipping file upload..."
+                  rm -rf "$file"
+                  cd images
+                  continue
+                fi
+              else
+                echo "No existing $file file."
+              fi
+              
+              echo "Uploading $file to release..."
+              curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Content-Type: application/octet-stream" \
+                -T "$file" \
+                "https://uploads.github.com/repos/alicorns-dev/oneclickvirt-pve-kvm-images/releases/$release_id/assets?name=$(basename "$file")"
+              rm -rf "$file"
+            else
+              echo "File $file is too small or too large, skipping upload"
+              rm -rf "$file"
+            fi
+            
+            cd images
+          else
+            echo "Skipping $file - file too small or doesn't exist"
+          fi
+        done

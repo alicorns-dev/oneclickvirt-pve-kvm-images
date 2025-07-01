@@ -1,7 +1,7 @@
 #!/bin/bash
 # GitHub Runner compatible image processing script
 # 由于GitHub Runner没有KVM支持，我们使用替代方法
-
+echo "================================================="
 set -e
 
 qcow_file=$1

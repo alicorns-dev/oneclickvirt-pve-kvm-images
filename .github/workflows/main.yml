@@ -44,10 +44,9 @@ jobs:
         # 检查可用工具
         which virt-customize || echo "virt-customize not available"
         which qemu-img || echo "qemu-img not available"
-        
-        # 下载我们的修改脚本
-        curl -o rebuild_qcow2_github.sh https://raw.githubusercontent.com/oneclickvirt/pve_kvm_images/main/rebuild_qcow2_github.sh
-        chmod +x rebuild_qcow2_github.sh
+
+        curl -o rebuild_qcow2.sh https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/main/rebuild_qcow2.sh
+        chmod 777 rebuild_qcow2.sh
 
     - name: Download official qcow2 images
       run: |
@@ -155,7 +154,7 @@ jobs:
             cd ..
             
             # 使用GitHub runner兼容的处理方法
-            ./rebuild_qcow2_github.sh "$file"
+            ./rebuild_qcow2.sh "$file"
             
             # 检查处理后的文件
             if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ] && [ $(stat -c %s "$file") -le 3221225472 ]; then

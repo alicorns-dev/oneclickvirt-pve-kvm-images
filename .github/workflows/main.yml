@@ -147,16 +147,14 @@ jobs:
         # 处理每个镜像文件
         for file in *.img *.qcow2; do
           if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ]; then
-            echo "🔄 处理文件: $file"
-            ls
+
             # 复制原文件
             cp "$file" "../$file"
-            echo "cp $file ../$file cd .."
             cd ..
-            ls
-            
+
+            echo "使用GitHub runner兼容的处理方法"
             # 使用GitHub runner兼容的处理方法
-            ./rebuild_qcow2.sh "$file"
+            bash -x ./rebuild_qcow2.sh "$file"
             
             # 检查处理后的文件
             if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ] && [ $(stat -c %s "$file") -le 3221225472 ]; then

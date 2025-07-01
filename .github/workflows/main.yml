@@ -4,15 +4,24 @@ on:
     - cron: '34 4 * * *'
   workflow_dispatch:
 
+env:
+  LIBGUESTFS_BACKEND: direct
+
 jobs:
   build_pve_kvm_images:
-    runs-on: pve-1
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
-    - name: check path
+    - name: Free up disk space
       run: |
-        pwd
+        # 清理GitHub runner的磁盘空间
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo docker image prune --all --force
+        df -h
 
     - name: Configure Git
       run: |
@@ -21,132 +30,166 @@ jobs:
 
     - name: Environment preparation
       run: |
-        export LIBGUESTFS_DEBUG=1
-        export LIBGUESTFS_TRACE=1
         sudo apt-get update
         sudo apt-get install -y curl wget unzip zip jq
-        sudo apt-get install -y libguestfs-tools rng-tools curl
-        sudo apt-get install -y libguestfs-tools rng-tools curl --fix-missing
-        curl -o rebuild_qcow2.sh https://raw.githubusercontent.com/alicorns-dev/oneclickvirt-pve-kvm-images/main/rebuild_qcow2.sh
-        chmod 777 rebuild_qcow2.sh
+        
+        # 安装libguestfs工具 - GitHub runner支持的版本
+        sudo apt-get install -y libguestfs-tools qemu-utils
+        
+        # 设置libguestfs环境变量（GitHub runner没有KVM）
+        export LIBGUESTFS_BACKEND=direct
+        export LIBGUESTFS_DEBUG=1 
+        export LIBGUESTFS_TRACE=1
+        
+        # 检查可用工具
+        which virt-customize || echo "virt-customize not available"
+        which qemu-img || echo "qemu-img not available"
+        
+        # 下载我们的修改脚本
+        curl -o rebuild_qcow2_github.sh https://raw.githubusercontent.com/oneclickvirt/pve_kvm_images/main/rebuild_qcow2_github.sh
+        chmod +x rebuild_qcow2_github.sh
 
     - name: Download official qcow2 images
       run: |
         mkdir -p images
         cd images
         
+        echo "开始下载官方镜像..."
+        
         # Ubuntu 24.04 LTS (Noble)
-        echo "Downloading Ubuntu 24.04 LTS..."
-        curl -L -o noble-server-cloudimg-amd64.img "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+        echo "正在下载 Ubuntu 24.04 LTS..."
+        curl -L --retry 3 --retry-delay 10 -o noble-server-cloudimg-amd64.img \
+          "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img" || echo "Ubuntu 24.04 下载失败"
         
         # Ubuntu 22.04 LTS (Jammy) 
-        echo "Downloading Ubuntu 22.04 LTS..."
-        curl -L -o jammy-server-cloudimg-amd64.img "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+        echo "正在下载 Ubuntu 22.04 LTS..."
+        curl -L --retry 3 --retry-delay 10 -o jammy-server-cloudimg-amd64.img \
+          "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img" || echo "Ubuntu 22.04 下载失败"
         
         # Debian 12 (Bookworm)
-        echo "Downloading Debian 12..."
-        curl -L -o debian-12-nocloud-amd64.qcow2 "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2"
+        echo "正在下载 Debian 12..."
+        curl -L --retry 3 --retry-delay 10 -o debian-12-nocloud-amd64.qcow2 \
+          "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2" || echo "Debian 12 下载失败"
         
         # Debian 11 (Bullseye) 
-        echo "Downloading Debian 11..."
-        curl -L -o debian-11-nocloud-amd64.qcow2 "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-nocloud-amd64.qcow2"
+        echo "正在下载 Debian 11..."
+        curl -L --retry 3 --retry-delay 10 -o debian-11-nocloud-amd64.qcow2 \
+          "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-nocloud-amd64.qcow2" || echo "Debian 11 下载失败"
         
         # AlmaLinux 9
-        echo "Downloading AlmaLinux 9..."
-        curl -L -o AlmaLinux-9-GenericCloud-latest.x86_64.qcow2 "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2"
+        echo "正在下载 AlmaLinux 9..."
+        curl -L --retry 3 --retry-delay 10 -o AlmaLinux-9-GenericCloud-latest.x86_64.qcow2 \
+          "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2" || echo "AlmaLinux 9 下载失败"
         
         # AlmaLinux 8
-        echo "Downloading AlmaLinux 8..."
-        curl -L -o AlmaLinux-8-GenericCloud-latest.x86_64.qcow2 "https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2"
+        echo "正在下载 AlmaLinux 8..."
+        curl -L --retry 3 --retry-delay 10 -o AlmaLinux-8-GenericCloud-latest.x86_64.qcow2 \
+          "https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2" || echo "AlmaLinux 8 下载失败"
         
         # Rocky Linux 9
-        echo "Downloading Rocky Linux 9..."
-        curl -L -o Rocky-9-GenericCloud-Base.latest.x86_64.qcow2 "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2"
+        echo "正在下载 Rocky Linux 9..."
+        curl -L --retry 3 --retry-delay 10 -o Rocky-9-GenericCloud-Base.latest.x86_64.qcow2 \
+          "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2" || echo "Rocky Linux 9 下载失败"
         
         # Rocky Linux 8
-        echo "Downloading Rocky Linux 8..."
-        curl -L -o Rocky-8-GenericCloud-Base.latest.x86_64.qcow2 "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2"
+        echo "正在下载 Rocky Linux 8..."
+        curl -L --retry 3 --retry-delay 10 -o Rocky-8-GenericCloud-Base.latest.x86_64.qcow2 \
+          "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2" || echo "Rocky Linux 8 下载失败"
         
         # CentOS Stream 9
-        echo "Downloading CentOS Stream 9..."
-        curl -L -o CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2 "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+        echo "正在下载 CentOS Stream 9..."
+        curl -L --retry 3 --retry-delay 10 -o CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2 \
+          "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2" || echo "CentOS Stream 9 下载失败"
         
-        # Fedora 42 (latest)
-        echo "Downloading Fedora 42..."
+        # Fedora (获取最新版本号)
+        echo "正在下载 Fedora..."
         FEDORA_LATEST=$(curl -s https://dl.fedoraproject.org/pub/fedora/linux/releases/ | grep -o 'href="[0-9]*/"' | sed 's/href="//;s/\/"//g' | sort -n | tail -1)
-        curl -L -o Fedora-Cloud-Base-$FEDORA_LATEST.x86_64.qcow2 "https://dl.fedoraproject.org/pub/fedora/linux/releases/$FEDORA_LATEST/Cloud/x86_64/images/Fedora-Cloud-Base-$FEDORA_LATEST.x86_64.qcow2"
-        
-        # Alpine Linux (获取最新版本)
-        echo "Downloading Alpine Linux..."
-        ALPINE_VERSION=$(curl -s https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/ | grep -o 'alpine-virt-[0-9.]*-x86_64.iso' | head -1 | sed 's/alpine-virt-//;s/-x86_64.iso//')
-        # Alpine没有官方qcow2格式，我们需要使用社区提供的云镜像
-        curl -L -o alpine-$ALPINE_VERSION-x86_64-bios-cloudinit-r0.qcow2 "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VERSION%.*}/cloud/alpine-$ALPINE_VERSION-x86_64-bios-cloudinit-r0.qcow2" || echo "Alpine cloud image not available for this version"
+        echo "检测到 Fedora 版本: $FEDORA_LATEST"
+        if [ ! -z "$FEDORA_LATEST" ]; then
+          curl -L --retry 3 --retry-delay 10 -o Fedora-Cloud-Base-$FEDORA_LATEST.x86_64.qcow2 \
+            "https://dl.fedoraproject.org/pub/fedora/linux/releases/$FEDORA_LATEST/Cloud/x86_64/images/Fedora-Cloud-Base-$FEDORA_LATEST.x86_64.qcow2" || echo "Fedora 下载失败"
+        fi
         
         # Arch Linux
-        echo "Downloading Arch Linux..."
-        curl -L -o Arch-Linux-x86_64-cloudimg.qcow2 "https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-cloudimg.qcow2"
+        echo "正在下载 Arch Linux..."
+        curl -L --retry 3 --retry-delay 10 -o Arch-Linux-x86_64-cloudimg.qcow2 \
+          "https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-cloudimg.qcow2" || echo "Arch Linux 下载失败"
         
-        # 重命名文件以符合原有命名规范
+        # 显示下载结果
+        echo "下载完成，文件列表："
         for file in *.img *.qcow2; do
           if [ -f "$file" ]; then
-            chmod 644 "$file"
-            echo "Downloaded: $file ($(du -h "$file" | cut -f1))"
+            size=$(du -h "$file" | cut -f1)
+            echo "✅ $file ($size)"
           fi
         done
         
+        # 显示磁盘空间
+        echo "当前磁盘使用情况："
+        df -h .
+        
         cd ..
-      
-    - name: Build and Upload Images
+
+    - name: Process images with qemu-img (GitHub Runner Compatible)
       run: |
         cd images
         
         # 获取release ID
-        release_id=$(curl -s -m 6 -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/alicorns-dev/oneclickvirt-pve-kvm-images/releases/tags/images" | jq -r '.id')
+        release_id=$(curl -s -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/tags/images" | jq -r '.id')
         
+        if [ "$release_id" == "null" ]; then
+          echo "❌ Release 'images' 不存在，请先创建release"
+          exit 1
+        fi
+        
+        echo "✅ 找到 release ID: $release_id"
+        
+        # 处理每个镜像文件
         for file in *.img *.qcow2; do
           if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ]; then
-            echo "Building and uploading $file"
+            echo "🔄 处理文件: $file"
             
-            # 复制到上级目录进行处理
+            # 复制原文件
             cp "$file" "../$file"
             cd ..
             
-            # 运行重建脚本
-            ./rebuild_qcow2.sh "$file"
+            # 使用GitHub runner兼容的处理方法
+            ./rebuild_qcow2_github.sh "$file"
             
-            if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ] && [ $(stat -c %s "$file") -le 2147483648 ]; then
-              echo "Checking if $file already exists in release..."
-              existing_asset_id=$(curl -s -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/alicorns-dev/oneclickvirt-pve-kvm-images/releases/$release_id/assets" | jq -r --arg name "$(basename "$file")" '.[] | select(.name == $name) | .id')
+            # 检查处理后的文件
+            if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ] && [ $(stat -c %s "$file") -le 3221225472 ]; then
+              echo "✅ 文件处理成功: $file ($(du -h "$file" | cut -f1))"
               
-              if [ -n "$existing_asset_id" ]; then
-                echo "Asset $file already exists in release, deleting existing asset..."
-                delete_response=$(curl -s -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/alicorns-dev/oneclickvirt-pve-kvm-images/releases/assets/$existing_asset_id")
-                echo "$delete_response"
-                if [ $? -eq 0 ] && ! echo "$delete_response" | grep -q "error"; then
-                  echo "Existing asset deleted successfully."
-                else
-                  echo "Failed to delete existing asset. Skipping file upload..."
-                  rm -rf "$file"
-                  cd images
-                  continue
-                fi
-              else
-                echo "No existing $file file."
+              # 检查是否已存在同名文件
+              existing_asset_id=$(curl -s -H "Accept: application/vnd.github.v3+json" \
+                "https://api.github.com/repos/${{ github.repository }}/releases/$release_id/assets" | \
+                jq -r --arg name "$(basename "$file")" '.[] | select(.name == $name) | .id')
+              
+              if [ -n "$existing_asset_id" ] && [ "$existing_asset_id" != "null" ]; then
+                echo "🗑️  删除已存在的文件: $file"
+                curl -s -X DELETE \
+                  -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                  "https://api.github.com/repos/${{ github.repository }}/releases/assets/$existing_asset_id"
               fi
               
-              echo "Uploading $file to release..."
-              curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              echo "⬆️  上传文件: $file"
+              curl -s \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
                 -H "Content-Type: application/octet-stream" \
                 -T "$file" \
-                "https://uploads.github.com/repos/alicorns-dev/oneclickvirt-pve-kvm-images/releases/$release_id/assets?name=$(basename "$file")"
-              rm -rf "$file"
+                "https://uploads.github.com/repos/${{ github.repository }}/releases/$release_id/assets?name=$(basename "$file")"
+              
+              echo "✅ 上传完成: $file"
+              rm -f "$file"
             else
-              echo "File $file is too small or too large, skipping upload"
-              rm -rf "$file"
+              echo "❌ 文件处理失败或大小不符合要求: $file"
             fi
             
             cd images
           else
-            echo "Skipping $file - file too small or doesn't exist"
+            echo "⏭️  跳过文件: $file (文件太小或不存在)"
           fi
         done
+        
+        echo "🎉 所有镜像处理完成"

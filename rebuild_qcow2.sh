@@ -186,7 +186,7 @@ else
     sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable qemu-guest-agent"
 fi
 sudo virt-customize -v -x -a $qcow_file --run-command "echo '' > /etc/motd"
-sudo virt-customize -v -x -a $qcow_file --run-command "echo 'Modified from https://github.com/oneclickvirt/pve_kvm_images' >> /etc/motd"
+sudo virt-customize -v -x -a $qcow_file --run-command "echo 'Modified from https://github.com/alicorns-dev/oneclickvirt-pve-kvm-images' >> /etc/motd"
 sudo virt-customize -v -x -a $qcow_file --run-command "echo 'Related repo https://github.com/spiritLHLS/pve' >> /etc/motd"
 sudo virt-customize -v -x -a $qcow_file --run-command "echo '--by https://t.me/spiritlhl' >> /etc/motd"
 sudo virt-customize -v -x -a $qcow_file --run-command "echo root:oneclickvirt | chpasswd root"

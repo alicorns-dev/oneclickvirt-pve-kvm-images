@@ -135,7 +135,7 @@ if command -v virt-customize &> /dev/null; then
     virt-customize -a "$qcow_file" \
         --run-command "echo 'PVE KVM Image - Optimized for Proxmox Virtual Environment' > /etc/motd" \
         --run-command "echo 'Source: Official distribution images' >> /etc/motd" \
-        --run-command "echo 'Modified from https://github.com/oneclickvirt/pve_kvm_images' >> /etc/motd" \
+        --run-command "echo 'Modified from https://github.com/alicorns-dev/oneclickvirt-pve-kvm-images' >> /etc/motd" \
         --run-command "echo 'Default login: root / oneclickvirt' >> /etc/motd" \
         --run-command "echo 'Please change the password after first login!' >> /etc/motd" \
         2>/dev/null || echo "⚠️  MOTD设置可能失败"

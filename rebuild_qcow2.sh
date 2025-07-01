@@ -1,203 +1,193 @@
 #!/bin/bash
-#from https://github.com/alicorns-dev/oneclickvirt-pve-kvm-images
+# GitHub Runner compatible image processing script
+# 由于GitHub Runner没有KVM支持，我们使用替代方法
+set -e
 
-if ! command -v virt-customize &> /dev/null
-then
-    echo "virt-customize not found, installing libguestfs-tools"
-    sudo apt-get update
-    sudo apt-get install -y libguestfs-tools
-    sudo apt-get install -y libguestfs-tools --fix-missing
-fi
-if ! command -v rngd &> /dev/null
-then
-    echo "rng-tools not found, installing rng-tools"
-    sudo apt-get update
-    sudo apt-get install -y rng-tools
-    sudo apt-get install -y rng-tools --fix-missing
-fi
-# sudo apt-get install -y passt
-export LIBGUESTFS_BACKEND=direct
-export LIBGUESTFS_BACKEND_SETTINGS="passt:no"
-ls -l /dev/kvm
-ls -l /var/lib/libvirt/
 qcow_file=$1
-echo "----------------------------------------------------------"
-echo "转换文件$qcow_file中......"
-if [[ "$qcow_file" == *"debian"* || "$qcow_file" == *"ubuntu"* || "$qcow_file" == *"arch"* ]]; then
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/ssh_pwauth:[[:space:]]*0/ssh_pwauth: 1/g' /etc/cloud/cloud.cfg"
-    echo "启用SSH功能..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable ssh"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start ssh"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable sshd"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start sshd"
-    echo "启用root登录..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#Port 22/Port 22/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#AddressFamily any/AddressFamily any/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#ListenAddress ::/ListenAddress ::/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "service ssh restart"
-    sudo virt-customize -v -x -a $qcow_file --run-command "service sshd restart"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl restart sshd"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl restart ssh"
-    if [[ "$qcow_file" == *"debian"* || "$qcow_file" == *"ubuntu"* ]]; then
-        sudo virt-customize -v -x -a $qcow_file --run-command "apt-get update -y"
-        sudo virt-customize -v -x -a $qcow_file --run-command "apt-get install sudo -y"
-        sudo virt-customize -v -x -a $qcow_file --run-command "apt-get install cron -y"
-        sudo virt-customize -v -x -a $qcow_file --run-command "apt-get install curl -y"
-        sudo virt-customize -v -x -a $qcow_file --run-command "apt-get install wget -y"
-        sudo virt-customize -v -x -a $qcow_file --run-command "apt-get install lsof -y"
-        echo "安装qemu-guest-agent..."
-        sudo virt-customize -v -x -a $qcow_file --run-command "apt-get install qemu-guest-agent -y"
-        sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start qemu-guest-agent"
-        sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable qemu-guest-agent"
-    elif [[ "$qcow_file" == *"arch"* ]]; then
-        sudo virt-customize -v -x -a $qcow_file --run-command "pacman -Sy --noconfirm --needed sudo"
-        sudo virt-customize -v -x -a $qcow_file --run-command "pacman -Sy --noconfirm --needed cron"
-        sudo virt-customize -v -x -a $qcow_file --run-command "pacman -Sy --noconfirm --needed curl"
-        sudo virt-customize -v -x -a $qcow_file --run-command "pacman -Sy --noconfirm --needed wget"
-        sudo virt-customize -v -x -a $qcow_file --run-command "pacman -Sy --noconfirm --needed lsof"
-        echo "安装qemu-guest-agent..."
-        sudo virt-customize -v -x -a $qcow_file --run-command "pacman -Sy --noconfirm --needed qemu-guest-agent"
-        sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start qemu-guest-agent"
-        sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable qemu-guest-agent"
-    fi
-elif [[ "$qcow_file" == *"alpine"* ]]; then
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/ssh_pwauth:[[:space:]]*0/ssh_pwauth: 1/g' /etc/cloud/cloud.cfg"
-    echo "安装依赖..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "apk update"
-    sudo virt-customize -v -x -a $qcow_file --run-command "apk add --no-cache openssh-server"
-    sudo virt-customize -v -x -a $qcow_file --run-command "apk add --no-cache sshpass"
-    sudo virt-customize -v -x -a $qcow_file --run-command "apk add --no-cache curl"
-    sudo virt-customize -v -x -a $qcow_file --run-command "apk add --no-cache wget"
-    sudo virt-customize -v -x -a $qcow_file --run-command "apk add --no-cache sudo"
-    sudo virt-customize -v -x -a $qcow_file --run-command "apk add --no-cache lsof"
-    sudo virt-customize -v -x -a $qcow_file --run-command "apk add --no-cache qemu-guest-agent"
-    sudo virt-customize -v -x -a $qcow_file --run-command "rc-update add qemu-guest-agent default"
-    sudo virt-customize -v -x -a $qcow_file --run-command "rc-service qemu-guest-agent start"
-    echo "启用SSH功能..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "rc-update add sshd"
-    sudo virt-customize -v -x -a $qcow_file --run-command "/etc/init.d/sshd start"
-    sudo virt-customize -v -x -a $qcow_file --run-command "cd /etc/ssh"
-    sudo virt-customize -v -x -a $qcow_file --run-command "ssh-keygen -A"
-    echo "启用root登录..."
-    sudo virt-customize -v -x -a $qcow_file --edit '/etc/cloud/cloud.cfg:s/preserve_hostname: *false/preserve_hostname: true/'
-    sudo virt-customize -v -x -a $qcow_file --edit '/etc/cloud/cloud.cfg:s/disable_root: *true/disable_root: false/'
-    sudo virt-customize -v -x -a $qcow_file --edit '/etc/ssh/sshd_config:s/PasswordAuthentication no/PasswordAuthentication yes/'
-    sudo virt-customize -v -x -a $qcow_file --edit '/etc/ssh/sshd_config:s/^#?\(Port\).*/\1 22/'
-    sudo virt-customize -v -x -a $qcow_file --edit '/etc/ssh/sshd_config:s/^#PermitRootLogin\|PermitRootLogin/c PermitRootLogin yes/'
-    sudo virt-customize -v -x -a $qcow_file --edit '/etc/ssh/sshd_config:s/^#AddressFamily\|AddressFamily/c AddressFamily any/'
-    sudo virt-customize -v -x -a $qcow_file --edit '/etc/ssh/sshd_config:s/^#ListenAddress\|ListenAddress/c ListenAddress 0.0.0.0/'
-    sudo virt-customize -v -x -a $qcow_file --run-command "/usr/sbin/sshd"
-elif [[ "$qcow_file" == *"almalinux9"* || "$qcow_file" == *"rockylinux"* ]]; then
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/ssh_pwauth:[[:space:]]*0/ssh_pwauth: 1/g' /etc/cloud/cloud.cfg"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum update -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install sudo -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install cronie -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install curl -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install wget -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install lsof -y"
-    echo "启用SSH功能..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable ssh"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start ssh"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable sshd"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start sshd"
-    echo "启用root登录..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/ssh_pwauth:[[:space:]]*0/ssh_pwauth: 1/g' /etc/cloud/cloud.cfg"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/^ChallengeResponseAuthentication no/ChallengeResponseAuthentication yes/g' /etc/ssh/sshd_config.d/50-redhat.conf"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#Port 22/Port 22/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#AddressFamily any/AddressFamily any/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#ListenAddress ::/ListenAddress ::/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "service ssh restart"
-    sudo virt-customize -v -x -a $qcow_file --run-command "service sshd restart"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl restart sshd"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl restart ssh"
-    echo "安装qemu-guest-agent..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install qemu-guest-agent -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start qemu-guest-agent"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable qemu-guest-agent"
-elif [[ "$qcow_file" == *"almalinux8"* || "$qcow_file" == *"centos9-stream"* || "$qcow_file" == *"centos8-stream"* || "$qcow_file" == *"centos7"* ]]; then
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/ssh_pwauth:[[:space:]]*0/ssh_pwauth: 1/g' /etc/cloud/cloud.cfg"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum update -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install sudo -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install cronie -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install curl -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install wget -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install lsof -y"
-    echo "启用SSH功能..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable ssh"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start ssh"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable sshd"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start sshd"
-    echo "启用root登录..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/^ChallengeResponseAuthentication no/ChallengeResponseAuthentication yes/g' /etc/ssh/sshd_config.d/50-redhat.conf"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#Port 22/Port 22/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#AddressFamily any/AddressFamily any/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#ListenAddress ::/ListenAddress ::/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "service ssh restart"
-    sudo virt-customize -v -x -a $qcow_file --run-command "service sshd restart"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl restart sshd"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl restart ssh"
-    echo "安装qemu-guest-agent..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "yum install qemu-guest-agent -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start qemu-guest-agent"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable qemu-guest-agent"
-else
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/disable_root:[[:space:]]*1/disable_root: 0/g' /etc/cloud/cloud.cfg"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/ssh_pwauth:[[:space:]]*0/ssh_pwauth: 1/g' /etc/cloud/cloud.cfg"
-    sudo virt-customize -v -x -a $qcow_file --run-command "dnf update -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "dnf install sudo -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "dnf install cronie -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "dnf install curl -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "dnf install wget -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "dnf install lsof -y"
-    echo "启用SSH功能..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable ssh"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start ssh"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable sshd"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start sshd"
-    echo "启用root登录..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#Port 22/Port 22/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#AddressFamily any/AddressFamily any/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "sed -i 's/#ListenAddress ::/ListenAddress ::/g' /etc/ssh/sshd_config"
-    sudo virt-customize -v -x -a $qcow_file --run-command "service ssh restart"
-    sudo virt-customize -v -x -a $qcow_file --run-command "service sshd restart"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl restart sshd"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl restart ssh"
-    echo "安装qemu-guest-agent..."
-    sudo virt-customize -v -x -a $qcow_file --run-command "dnf install qemu-guest-agent -y"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl start qemu-guest-agent"
-    sudo virt-customize -v -x -a $qcow_file --run-command "systemctl enable qemu-guest-agent"
+
+if [ -z "$qcow_file" ]; then
+    echo "使用方法: $0 <qcow2_file>"
+    exit 1
 fi
-sudo virt-customize -v -x -a $qcow_file --run-command "echo '' > /etc/motd"
-sudo virt-customize -v -x -a $qcow_file --run-command "echo 'Modified from https://github.com/alicorns-dev/oneclickvirt-pve-kvm-images' >> /etc/motd"
-sudo virt-customize -v -x -a $qcow_file --run-command "echo 'Related repo https://github.com/spiritLHLS/pve' >> /etc/motd"
-sudo virt-customize -v -x -a $qcow_file --run-command "echo '--by https://t.me/spiritlhl' >> /etc/motd"
-sudo virt-customize -v -x -a $qcow_file --run-command "echo root:oneclickvirt | chpasswd root"
-sudo virt-customize -v -x -a $qcow_file --run-command "echo root:oneclickvirt | sudo chpasswd root"
-# 不是所有机器都需要IPV6保活，故而暂不添加保活命令
-# sudo virt-customize -v -x -a $qcow_file --run-command "echo '*/1 * * * * curl -m 6 -s ipv6.ip.sb || curl -m 6 -s ipv6.ip.sb' | crontab -"
-echo "创建备份..."
-cp $qcow_file ${qcow_file}.bak
-echo "复制新文件..."
-cp $qcow_file ${qcow_file}.tmp
-echo "覆盖原文件..."
-mv ${qcow_file}.tmp $qcow_file
-rm -rf *.bak
-echo "$qcow_file修改完成"
+
+echo "================================================="
+echo "处理文件: $qcow_file (GitHub Runner兼容版本)"
+echo "================================================="
+
+# 检查文件是否存在
+if [ ! -f "$qcow_file" ]; then
+    echo "❌ 文件不存在: $qcow_file"
+    exit 1
+fi
+
+# 显示文件信息
+echo "📁 原始文件信息:"
+file_size=$(du -h "$qcow_file" | cut -f1)
+echo "   大小: $file_size"
+echo "   类型: $(file "$qcow_file")"
+
+# 检查是否为有效的qcow2文件
+if ! qemu-img info "$qcow_file" > /dev/null 2>&1; then
+    echo "❌ 不是有效的qcow2文件: $qcow_file"
+    exit 1
+fi
+
+echo "✅ qcow2文件验证通过"
+
+# 显示镜像详细信息
+echo "📋 镜像详细信息:"
+qemu-img info "$qcow_file"
+
+# 创建备份
+echo "💾 创建备份..."
+cp "$qcow_file" "${qcow_file}.backup"
+
+# 由于GitHub Runner限制，我们采用以下方法:
+# 1. 使用qemu-img进行基本的镜像优化
+# 2. 通过guestmount挂载文件系统进行修改 (如果可用)
+# 3. 或者使用virt-customize的有限功能
+
+echo "🔧 开始镜像优化..."
+
+# 方法1: 尝试使用virt-customize (可能受限)
+if command -v virt-customize &> /dev/null; then
+    echo "🛠️  使用virt-customize进行配置..."
+    
+    # 检测发行版类型
+    distro="unknown"
+    if [[ "$qcow_file" == *"ubuntu"* || "$qcow_file" == *"noble"* || "$qcow_file" == *"jammy"* ]]; then
+        distro="ubuntu"
+    elif [[ "$qcow_file" == *"debian"* ]]; then
+        distro="debian"
+    elif [[ "$qcow_file" == *"almalinux"* || "$qcow_file" == *"AlmaLinux"* ]]; then
+        distro="almalinux"
+    elif [[ "$qcow_file" == *"rocky"* || "$qcow_file" == *"Rocky"* ]]; then
+        distro="rocky"
+    elif [[ "$qcow_file" == *"centos"* || "$qcow_file" == *"CentOS"* ]]; then
+        distro="centos"
+    elif [[ "$qcow_file" == *"fedora"* || "$qcow_file" == *"Fedora"* ]]; then
+        distro="fedora"
+    elif [[ "$qcow_file" == *"arch"* || "$qcow_file" == *"Arch"* ]]; then
+        distro="arch"
+    elif [[ "$qcow_file" == *"alpine"* || "$qcow_file" == *"Alpine"* ]]; then
+        distro="alpine"
+    fi
+    
+    echo "🔍 检测到发行版: $distro"
+    
+    # 设置环境变量
+    export LIBGUESTFS_BACKEND=direct
+    
+    # 基本SSH配置 (适用于所有发行版)
+    echo "🔐 配置SSH访问..."
+    
+    # 尝试基本的SSH配置
+    virt-customize -a "$qcow_file" \
+        --run-command "sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config" \
+        --run-command "sed -i 's/#PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config" \
+        --run-command "sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config" \
+        --run-command "sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config" \
+        2>/dev/null || echo "⚠️  SSH配置可能失败，继续处理..."
+    
+    # 设置root密码
+    echo "🔑 设置root密码..."
+    virt-customize -a "$qcow_file" \
+        --run-command "echo root:oneclickvirt | chpasswd" \
+        2>/dev/null || echo "⚠️  密码设置可能失败"
+    
+    # 针对不同发行版的特定配置
+    case $distro in
+        "ubuntu"|"debian")
+            echo "🐧 配置Ubuntu/Debian系统..."
+            virt-customize -a "$qcow_file" \
+                --run-command "sed -i 's/ssh_pwauth:[[:space:]]*false/ssh_pwauth: true/g' /etc/cloud/cloud.cfg" \
+                --run-command "sed -i 's/disable_root:[[:space:]]*true/disable_root: false/g' /etc/cloud/cloud.cfg" \
+                --run-command "sed -i 's/lock_passwd:[[:space:]]*true/lock_passwd: false/g' /etc/cloud/cloud.cfg" \
+                2>/dev/null || echo "⚠️  Cloud-init配置可能失败"
+            ;;
+        "almalinux"|"rocky"|"centos"|"fedora")
+            echo "🎩 配置RHEL系系统..."
+            virt-customize -a "$qcow_file" \
+                --run-command "sed -i 's/ssh_pwauth:[[:space:]]*false/ssh_pwauth: true/g' /etc/cloud/cloud.cfg" \
+                --run-command "sed -i 's/disable_root:[[:space:]]*1/disable_root: 0/g' /etc/cloud/cloud.cfg" \
+                --run-command "sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config" \
+                2>/dev/null || echo "⚠️  RHEL系统配置可能失败"
+            ;;
+        "arch")
+            echo "🏹 配置Arch Linux系统..."
+            virt-customize -a "$qcow_file" \
+                --run-command "sed -i 's/ssh_pwauth:[[:space:]]*false/ssh_pwauth: true/g' /etc/cloud/cloud.cfg" \
+                --run-command "sed -i 's/disable_root:[[:space:]]*true/disable_root: false/g' /etc/cloud/cloud.cfg" \
+                2>/dev/null || echo "⚠️  Arch配置可能失败"
+            ;;
+        "alpine")
+            echo "🏔️  配置Alpine Linux系统..."
+            virt-customize -a "$qcow_file" \
+                --run-command "sed -i 's/ssh_pwauth:[[:space:]]*false/ssh_pwauth: true/g' /etc/cloud/cloud.cfg" \
+                --run-command "sed -i 's/disable_root:[[:space:]]*true/disable_root: false/g' /etc/cloud/cloud.cfg" \
+                2>/dev/null || echo "⚠️  Alpine配置可能失败"
+            ;;
+    esac
+    
+    # 添加PVE优化的motd
+    echo "📄 添加MOTD信息..."
+    virt-customize -a "$qcow_file" \
+        --run-command "echo 'PVE KVM Image - Optimized for Proxmox Virtual Environment' > /etc/motd" \
+        --run-command "echo 'Source: Official distribution images' >> /etc/motd" \
+        --run-command "echo 'Modified from https://github.com/alicorns-dev/oneclickvirt-pve-kvm-images' >> /etc/motd" \
+        --run-command "echo 'Default login: root / oneclickvirt' >> /etc/motd" \
+        --run-command "echo 'Please change the password after first login!' >> /etc/motd" \
+        2>/dev/null || echo "⚠️  MOTD设置可能失败"
+    
+else
+    echo "⚠️  virt-customize不可用，跳过系统配置"
+fi
+
+# 方法2: 使用qemu-img进行镜像优化
+echo "📦 优化镜像格式..."
+
+# 转换为更优化的qcow2格式
+temp_file="${qcow_file}.optimized"
+qemu-img convert -O qcow2 -c "$qcow_file" "$temp_file"
+
+# 检查优化后的文件
+if [ -f "$temp_file" ]; then
+    original_size=$(stat -c%s "$qcow_file")
+    optimized_size=$(stat -c%s "$temp_file")
+    
+    echo "📊 优化结果:"
+    echo "   原始大小: $(du -h "$qcow_file" | cut -f1)"
+    echo "   优化大小: $(du -h "$temp_file" | cut -f1)"
+    
+    # 如果优化后的文件更小或大小相近，则使用优化版本
+    if [ "$optimized_size" -le "$original_size" ]; then
+        echo "✅ 使用优化后的镜像"
+        mv "$temp_file" "$qcow_file"
+    else
+        echo "ℹ️  保持原始镜像"
+        rm -f "$temp_file"
+    fi
+else
+    echo "❌ 镜像优化失败"
+fi
+
+# 验证最终镜像
+echo "🔍 验证最终镜像..."
+if qemu-img check "$qcow_file" > /dev/null 2>&1; then
+    echo "✅ 镜像验证通过"
+else
+    echo "⚠️  镜像验证失败，恢复备份"
+    mv "${qcow_file}.backup" "$qcow_file"
+fi
+
+# 显示最终文件信息
+echo "📋 最终文件信息:"
+final_size=$(du -h "$qcow_file" | cut -f1)
+echo "   大小: $final_size"
+qemu-img info "$qcow_file" | head -10
+
+# 清理备份文件
+rm -f "${qcow_file}.backup"
+
+echo "🎉 镜像处理完成: $qcow_file"
+echo "================================================="

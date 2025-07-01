@@ -45,7 +45,7 @@ jobs:
         which virt-customize || echo "virt-customize not available"
         which qemu-img || echo "qemu-img not available"
 
-        curl -o rebuild_qcow2.sh https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/main/rebuild_qcow2.sh
+        curl -o rebuild_qcow2.sh https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/rebuild_qcow2.sh
         chmod 777 rebuild_qcow2.sh
 
     - name: Download official qcow2 images

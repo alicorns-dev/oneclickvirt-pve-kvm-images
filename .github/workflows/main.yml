@@ -151,10 +151,10 @@ jobs:
             ls
             # 复制原文件
             cp "$file" "../$file"
+            echo "cp $file ../$file cd .."
             cd ..
             ls
-            echo "ls ../"
-            ls ../
+            
             # 使用GitHub runner兼容的处理方法
             ./rebuild_qcow2.sh "$file"
             

@@ -55,68 +55,186 @@ jobs:
         
         echo "开始下载官方镜像..."
         
+        # Ubuntu LTS 和最新版本
+        echo "正在下载 Ubuntu 镜像..."
         # Ubuntu 24.04 LTS (Noble)
-        echo "正在下载 Ubuntu 24.04 LTS..."
         curl -L --retry 3 --retry-delay 10 -o noble-server-cloudimg-amd64.img \
           "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img" || echo "Ubuntu 24.04 下载失败"
         
         # Ubuntu 22.04 LTS (Jammy) 
-        echo "正在下载 Ubuntu 22.04 LTS..."
         curl -L --retry 3 --retry-delay 10 -o jammy-server-cloudimg-amd64.img \
           "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img" || echo "Ubuntu 22.04 下载失败"
         
-        # Debian 12 (Bookworm)
-        echo "正在下载 Debian 12..."
+        # Ubuntu 20.04 LTS (Focal) - 仍在支持期
+        curl -L --retry 3 --retry-delay 10 -o focal-server-cloudimg-amd64.img \
+          "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img" || echo "Ubuntu 20.04 下载失败"
+        
+        # Debian 系列
+        echo "正在下载 Debian 镜像..."
+        # Debian 12 (Bookworm) - 当前稳定版
         curl -L --retry 3 --retry-delay 10 -o debian-12-nocloud-amd64.qcow2 \
           "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2" || echo "Debian 12 下载失败"
         
-        # Debian 11 (Bullseye) 
-        echo "正在下载 Debian 11..."
+        # Debian 11 (Bullseye) - 旧稳定版
         curl -L --retry 3 --retry-delay 10 -o debian-11-nocloud-amd64.qcow2 \
           "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-nocloud-amd64.qcow2" || echo "Debian 11 下载失败"
         
-        # AlmaLinux 9
-        echo "正在下载 AlmaLinux 9..."
+        # Debian 13 (Trixie) - 测试版
+        curl -L --retry 3 --retry-delay 10 -o debian-13-nocloud-amd64.qcow2 \
+          "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-nocloud-amd64.qcow2" || echo "Debian 13 下载失败"
+        
+        # AlmaLinux 系列
+        echo "正在下载 AlmaLinux 镜像..."
+        # AlmaLinux 9 (最新)
         curl -L --retry 3 --retry-delay 10 -o AlmaLinux-9-GenericCloud-latest.x86_64.qcow2 \
           "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2" || echo "AlmaLinux 9 下载失败"
         
         # AlmaLinux 8
-        echo "正在下载 AlmaLinux 8..."
         curl -L --retry 3 --retry-delay 10 -o AlmaLinux-8-GenericCloud-latest.x86_64.qcow2 \
           "https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2" || echo "AlmaLinux 8 下载失败"
         
+        # Rocky Linux 系列
+        echo "正在下载 Rocky Linux 镜像..."
         # Rocky Linux 9
-        echo "正在下载 Rocky Linux 9..."
         curl -L --retry 3 --retry-delay 10 -o Rocky-9-GenericCloud-Base.latest.x86_64.qcow2 \
           "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2" || echo "Rocky Linux 9 下载失败"
         
         # Rocky Linux 8
-        echo "正在下载 Rocky Linux 8..."
         curl -L --retry 3 --retry-delay 10 -o Rocky-8-GenericCloud-Base.latest.x86_64.qcow2 \
           "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2" || echo "Rocky Linux 8 下载失败"
         
+        # CentOS Stream 系列
+        echo "正在下载 CentOS Stream 镜像..."
         # CentOS Stream 9
-        echo "正在下载 CentOS Stream 9..."
         curl -L --retry 3 --retry-delay 10 -o CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2 \
           "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2" || echo "CentOS Stream 9 下载失败"
         
-        # Fedora (获取最新版本号)
-        echo "正在下载 Fedora..."
+        # CentOS Stream 8 (如果仍可用)
+        curl -L --retry 3 --retry-delay 10 -o CentOS-Stream-GenericCloud-8-latest.x86_64.qcow2 \
+          "https://cloud.centos.org/centos/8-stream/x86_64/images/CentOS-Stream-GenericCloud-8-latest.x86_64.qcow2" || echo "CentOS Stream 8 下载失败"
+        
+        # Fedora 系列 (获取最新和前一个版本)
+        echo "正在下载 Fedora 镜像..."
         FEDORA_LATEST=$(curl -s https://dl.fedoraproject.org/pub/fedora/linux/releases/ | grep -o 'href="[0-9]*/"' | sed 's/href="//;s/\/"//g' | sort -n | tail -1)
-        echo "检测到 Fedora 版本: $FEDORA_LATEST"
+        FEDORA_PREV=$(curl -s https://dl.fedoraproject.org/pub/fedora/linux/releases/ | grep -o 'href="[0-9]*/"' | sed 's/href="//;s/\/"//g' | sort -n | tail -2 | head -1)
+        
+        echo "检测到 Fedora 最新版本: $FEDORA_LATEST, 前一版本: $FEDORA_PREV"
+        
+        # Fedora 最新版
         if [ ! -z "$FEDORA_LATEST" ]; then
           curl -L --retry 3 --retry-delay 10 -o Fedora-Cloud-Base-$FEDORA_LATEST.x86_64.qcow2 \
-            "https://dl.fedoraproject.org/pub/fedora/linux/releases/$FEDORA_LATEST/Cloud/x86_64/images/Fedora-Cloud-Base-$FEDORA_LATEST.x86_64.qcow2" || echo "Fedora 下载失败"
+            "https://dl.fedoraproject.org/pub/fedora/linux/releases/$FEDORA_LATEST/Cloud/x86_64/images/Fedora-Cloud-Base-$FEDORA_LATEST.x86_64.qcow2" || echo "Fedora $FEDORA_LATEST 下载失败"
         fi
         
+        # Fedora 前一版本
+        if [ ! -z "$FEDORA_PREV" ] && [ "$FEDORA_PREV" != "$FEDORA_LATEST" ]; then
+          curl -L --retry 3 --retry-delay 10 -o Fedora-Cloud-Base-$FEDORA_PREV.x86_64.qcow2 \
+            "https://dl.fedoraproject.org/pub/fedora/linux/releases/$FEDORA_PREV/Cloud/x86_64/images/Fedora-Cloud-Base-$FEDORA_PREV.x86_64.qcow2" || echo "Fedora $FEDORA_PREV 下载失败"
+        fi
+        
+        # Fedora Rawhide (开发版)
+        curl -L --retry 3 --retry-delay 10 -o Fedora-Cloud-Base-Rawhide.x86_64.qcow2 \
+          "https://dl.fedoraproject.org/pub/fedora/linux/development/rawhide/Cloud/x86_64/images/Fedora-Cloud-Base-Rawhide-latest.x86_64.qcow2" || echo "Fedora Rawhide 下载失败"
+        
         # Arch Linux
-        echo "正在下载 Arch Linux..."
+        echo "正在下载 Arch Linux 镜像..."
         curl -L --retry 3 --retry-delay 10 -o Arch-Linux-x86_64-cloudimg.qcow2 \
           "https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-cloudimg.qcow2" || echo "Arch Linux 下载失败"
         
+        # openSUSE 系列
+        echo "正在下载 openSUSE 镜像..."
+        # openSUSE Leap 15.6 (最新LTS)
+        curl -L --retry 3 --retry-delay 10 -o openSUSE-Leap-15.6-JeOS.x86_64.qcow2 \
+          "https://download.opensuse.org/distribution/leap/15.6/appliances/openSUSE-Leap-15.6-JeOS.x86_64-Cloud.qcow2" || echo "openSUSE Leap 15.6 下载失败"
+        
+        # openSUSE Leap 15.5
+        curl -L --retry 3 --retry-delay 10 -o openSUSE-Leap-15.5-JeOS.x86_64.qcow2 \
+          "https://download.opensuse.org/distribution/leap/15.5/appliances/openSUSE-Leap-15.5-JeOS.x86_64-Cloud.qcow2" || echo "openSUSE Leap 15.5 下载失败"
+        
+        # openSUSE Tumbleweed (滚动发布)
+        curl -L --retry 3 --retry-delay 10 -o openSUSE-Tumbleweed-JeOS.x86_64.qcow2 \
+          "https://download.opensuse.org/tumbleweed/appliances/openSUSE-Tumbleweed-JeOS.x86_64-Cloud.qcow2" || echo "openSUSE Tumbleweed 下载失败"
+        
+        # Alpine Linux
+        echo "正在下载 Alpine Linux 镜像..."
+        # 获取最新版本号
+        ALPINE_LATEST=$(curl -s https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/ | grep -o 'alpine-virt-[0-9]*\.[0-9]*\.[0-9]*-x86_64.iso' | head -1 | sed 's/alpine-virt-//;s/-x86_64.iso//')
+        if [ ! -z "$ALPINE_LATEST" ]; then
+          # Alpine 云镜像
+          curl -L --retry 3 --retry-delay 10 -o alpine-$ALPINE_LATEST-x86_64.qcow2 \
+            "https://dl-cdn.alpinelinux.org/alpine/v$(echo $ALPINE_LATEST | cut -d. -f1-2)/releases/cloud/alpine-$ALPINE_LATEST-x86_64.qcow2" || echo "Alpine Linux 下载失败"
+        fi
+        
+        # Oracle Linux
+        echo "正在下载 Oracle Linux 镜像..."
+        # Oracle Linux 9
+        curl -L --retry 3 --retry-delay 10 -o OL9U-x86_64-kvm.qcow2 \
+          "https://yum.oracle.com/templates/OracleLinux/OL9/u4/x86_64/OL9U4_x86_64-kvm.qcow2" || echo "Oracle Linux 9 下载失败"
+        
+        # Oracle Linux 8
+        curl -L --retry 3 --retry-delay 10 -o OL8U-x86_64-kvm.qcow2 \
+          "https://yum.oracle.com/templates/OracleLinux/OL8/u10/x86_64/OL8U10_x86_64-kvm.qcow2" || echo "Oracle Linux 8 下载失败"
+        
+        # Kali Linux
+        echo "正在下载 Kali Linux 镜像..."
+        # 获取最新版本
+        KALI_LATEST=$(curl -s https://cdimage.kali.org/kali-images/current/ | grep -o 'kali-linux-[0-9]*\.[0-9]*-cloud-amd64.tar.xz' | head -1 | sed 's/kali-linux-//;s/-cloud-amd64.tar.xz//')
+        if [ ! -z "$KALI_LATEST" ]; then
+          curl -L --retry 3 --retry-delay 10 -o kali-linux-$KALI_LATEST-cloud-amd64.tar.xz \
+            "https://cdimage.kali.org/kali-images/current/kali-linux-$KALI_LATEST-cloud-amd64.tar.xz" || echo "Kali Linux 下载失败"
+          
+          # 解压 Kali 镜像
+          if [ -f "kali-linux-$KALI_LATEST-cloud-amd64.tar.xz" ]; then
+            tar -xf "kali-linux-$KALI_LATEST-cloud-amd64.tar.xz" || echo "Kali Linux 解压失败"
+            rm -f "kali-linux-$KALI_LATEST-cloud-amd64.tar.xz"
+          fi
+        fi
+        
+        # FreeBSD
+        echo "正在下载 FreeBSD 镜像..."
+        # FreeBSD 14.1 (最新稳定版)
+        curl -L --retry 3 --retry-delay 10 -o FreeBSD-14.1-RELEASE-amd64.qcow2.xz \
+          "https://download.freebsd.org/releases/VM-IMAGES/14.1-RELEASE/amd64/Latest/FreeBSD-14.1-RELEASE-amd64.qcow2.xz" || echo "FreeBSD 14.1 下载失败"
+        
+        # FreeBSD 13.3
+        curl -L --retry 3 --retry-delay 10 -o FreeBSD-13.3-RELEASE-amd64.qcow2.xz \
+          "https://download.freebsd.org/releases/VM-IMAGES/13.3-RELEASE/amd64/Latest/FreeBSD-13.3-RELEASE-amd64.qcow2.xz" || echo "FreeBSD 13.3 下载失败"
+        
+        # 解压 FreeBSD 镜像
+        for file in *.qcow2.xz; do
+          if [ -f "$file" ]; then
+            echo "解压: $file"
+            xz -d "$file" || echo "$file 解压失败"
+          fi
+        done
+        
+        # Gentoo Linux
+        echo "正在下载 Gentoo Linux 镜像..."
+        # Gentoo 最新 minimal 镜像
+        GENTOO_DATE=$(curl -s https://distfiles.gentoo.org/releases/amd64/autobuilds/current-stage3-amd64/ | grep -o '[0-9]*T[0-9]*Z' | head -1)
+        if [ ! -z "$GENTOO_DATE" ]; then
+          curl -L --retry 3 --retry-delay 10 -o gentoo-stage3-amd64-$GENTOO_DATE.tar.xz \
+            "https://distfiles.gentoo.org/releases/amd64/autobuilds/current-stage3-amd64/stage3-amd64-$GENTOO_DATE.tar.xz" || echo "Gentoo Linux 下载失败"
+        fi
+        
+        # Void Linux
+        echo "正在下载 Void Linux 镜像..."
+        # Void Linux 云镜像 (如果可用)
+        curl -L --retry 3 --retry-delay 10 -o void-linux-cloud.qcow2 \
+          "https://repo-default.voidlinux.org/live/current/void-live-x86_64-musl-cloud.qcow2" || echo "Void Linux 下载失败"
+        
+        # NixOS
+        echo "正在下载 NixOS 镜像..."
+        # 获取最新版本
+        NIXOS_LATEST=$(curl -s https://releases.nixos.org/ | grep -o 'nixos-[0-9]*\.[0-9]*' | sort -V | tail -1 | sed 's/nixos-//')
+        if [ ! -z "$NIXOS_LATEST" ]; then
+          curl -L --retry 3 --retry-delay 10 -o nixos-$NIXOS_LATEST-x86_64-linux.qcow2 \
+            "https://releases.nixos.org/nixos/$NIXOS_LATEST/nixos-$NIXOS_LATEST-x86_64-linux.qcow2" || echo "NixOS 下载失败"
+        fi
+        
         # 显示下载结果
         echo "下载完成，文件列表："
-        for file in *.img *.qcow2; do
+        for file in *.img *.qcow2 *.tar.xz; do
           if [ -f "$file" ]; then
             size=$(du -h "$file" | cut -f1)
             echo "✅ $file ($size)"
@@ -128,8 +246,8 @@ jobs:
         df -h .
         
         cd ..
-
-    - name: Process images with qemu-img (GitHub Runner Compatible)
+        
+    - name: Process images with enhanced script
       run: |
         cd images
         
@@ -144,51 +262,112 @@ jobs:
         
         echo "✅ 找到 release ID: $release_id"
         
-        # 处理每个镜像文件
-        for file in *.img *.qcow2; do
-          if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ]; then
-
-            # 复制原文件
-            cp "$file" "../$file"
-            cd ..
-
-            echo "使用GitHub runner兼容的处理方法"
-            # 使用GitHub runner兼容的处理方法
-            bash -x ./rebuild_qcow2.sh "$file"
+        # 安装bc计算器用于压缩比计算
+        sudo apt-get install -y bc
+        
+        # 创建处理日志
+        echo "开始处理镜像文件..." > ../processing.log
+        echo "处理时间: $(date)" >> ../processing.log
+        echo "----------------------------------------" >> ../processing.log
+        
+        # 统计变量
+        total_files=0
+        processed_files=0
+        failed_files=0
+        
+        # 处理每个镜像文件 (支持更多格式)
+        for file in *.img *.qcow2 *.tar.xz *.xz; do
+          if [ -f "$file" ]; then
+            total_files=$((total_files + 1))
             
-            # 检查处理后的文件
-            if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ] && [ $(stat -c %s "$file") -le 3221225472 ]; then
-              echo "✅ 文件处理成功: $file ($(du -h "$file" | cut -f1))"
+            # 检查文件大小 (至少10MB)
+            if [ $(stat -c %s "$file") -gt 10485760 ]; then
+              echo "🔄 处理文件: $file"
+              echo "处理文件: $file ($(du -h "$file" | cut -f1))" >> ../processing.log
               
-              # 检查是否已存在同名文件
-              existing_asset_id=$(curl -s -H "Accept: application/vnd.github.v3+json" \
-                "https://api.github.com/repos/${{ github.repository }}/releases/$release_id/assets" | \
-                jq -r --arg name "$(basename "$file")" '.[] | select(.name == $name) | .id')
-              
-              if [ -n "$existing_asset_id" ] && [ "$existing_asset_id" != "null" ]; then
-                echo "🗑️  删除已存在的文件: $file"
-                curl -s -X DELETE \
-                  -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                  "https://api.github.com/repos/${{ github.repository }}/releases/assets/$existing_asset_id"
+              # 复制原文件到上级目录
+              cp "$file" "../$file"
+              cd ..
+
+              # 使用增强的处理脚本
+              if bash -x ./rebuild_qcow2.sh "$file"; then
+                # 检查处理后的文件
+                if [ -f "$file" ] && [ $(stat -c %s "$file") -gt 10485760 ]; then
+                  final_size=$(stat -c %s "$file")
+                  max_size=3221225472  # 3GB
+                  
+                  if [ "$final_size" -le "$max_size" ]; then
+                    echo "✅ 文件处理成功: $file ($(du -h "$file" | cut -f1))"
+                    echo "成功: $file -> $(du -h "$file" | cut -f1)" >> processing.log
+                    
+                    # 检查是否已存在同名文件
+                    existing_asset_id=$(curl -s -H "Accept: application/vnd.github.v3+json" \
+                      "https://api.github.com/repos/${{ github.repository }}/releases/$release_id/assets" | \
+                      jq -r --arg name "$(basename "$file")" '.[] | select(.name == $name) | .id')
+                    
+                    if [ -n "$existing_asset_id" ] && [ "$existing_asset_id" != "null" ]; then
+                      echo "🗑️  删除已存在的文件: $file"
+                      curl -s -X DELETE \
+                        -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                        "https://api.github.com/repos/${{ github.repository }}/releases/assets/$existing_asset_id"
+                    fi
+                    
+                    echo "⬆️  上传文件: $file"
+                    upload_result=$(curl -s -w "%{http_code}" \
+                      -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                      -H "Content-Type: application/octet-stream" \
+                      -T "$file" \
+                      "https://uploads.github.com/repos/${{ github.repository }}/releases/$release_id/assets?name=$(basename "$file")")
+                    
+                    if [[ "$upload_result" == *"20"* ]]; then
+                      echo "✅ 上传成功: $file"
+                      echo "上传成功: $file" >> processing.log
+                      processed_files=$((processed_files + 1))
+                    else
+                      echo "❌ 上传失败: $file (HTTP: $upload_result)"
+                      echo "上传失败: $file (HTTP: $upload_result)" >> processing.log
+                      failed_files=$((failed_files + 1))
+                    fi
+                    
+                    # 清理本地文件以节省空间
+                    rm -f "$file"
+                  else
+                    echo "❌ 文件超过3GB限制: $file ($(du -h "$file" | cut -f1))"
+                    echo "超大小: $file -> $(du -h "$file" | cut -f1)" >> processing.log
+                    failed_files=$((failed_files + 1))
+                    rm -f "$file"
+                  fi
+                else
+                  echo "❌ 文件处理后无效或太小: $file"
+                  echo "处理失败: $file (文件无效)" >> processing.log
+                  failed_files=$((failed_files + 1))
+                  rm -f "$file" 2>/dev/null || true
+                fi
+              else
+                echo "❌ 文件处理脚本失败: $file"
+                echo "脚本失败: $file" >> processing.log
+                failed_files=$((failed_files + 1))
+                rm -f "$file" 2>/dev/null || true
               fi
               
-              echo "⬆️  上传文件: $file"
-              curl -s \
-                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                -H "Content-Type: application/octet-stream" \
-                -T "$file" \
-                "https://uploads.github.com/repos/${{ github.repository }}/releases/$release_id/assets?name=$(basename "$file")"
-              
-              echo "✅ 上传完成: $file"
-              rm -f "$file"
+              cd images
             else
-              echo "❌ 文件处理失败或大小不符合要求: $file"
+              echo "⏭️  跳过文件: $file (文件太小: $(du -h "$file" | cut -f1))"
+              echo "跳过: $file (太小)" >> ../processing.log
             fi
-            
-            cd images
-          else
-            echo "⏭️  跳过文件: $file (文件太小或不存在)"
           fi
         done
         
-        echo "🎉 所有镜像处理完成"
+        # 显示处理报告
+        echo ""
+        echo "🎉 镜像处理完成！"
+        echo "📊 处理统计:"
+        echo "   总文件数: $total_files"
+        echo "   成功处理: $processed_files"
+        echo "   失败文件: $failed_files"
+        echo "   成功率: $(echo "scale=1; $processed_files * 100 / $total_files" | bc 2>/dev/null || echo "N/A")%"
+        
+        
+        echo ""
+        echo "🌟 所有镜像处理完成！"
+        echo "📦 可用镜像已上传到 GitHub Releases"

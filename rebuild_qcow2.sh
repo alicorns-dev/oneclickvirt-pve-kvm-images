@@ -1,5 +1,5 @@
 #!/bin/bash
-#from https://github.com/oneclickvirt/pve_kvm_images
+#from https://github.com/alicorns-dev/oneclickvirt-pve-kvm-images
 
 if ! command -v virt-customize &> /dev/null
 then
